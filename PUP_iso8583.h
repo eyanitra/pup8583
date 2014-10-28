@@ -7,9 +7,10 @@ struct opx{
 
 typedef struct opx PUP_HDL;
 typedef unsigned char uch;
+typedef unsigned char unhandled_field;
 
-PUP_HDL PUP_getUnpack(const uch *codec, const uch *packedFromHeader, int packedLen);
-PUP_HDL PUP_getUnpackNoHeader(const uch *codec, const uch *packedFromMTI, int packedLen);
+unhandled_field PUP_getUnpack(const uch *codec, const uch *packedFromHeader, int packedLen, PUP_HDL *hdl);
+unhandled_field PUP_getUnpackNoHeader(const uch *codec, const uch *packedFromMTI, int packedLen, PUP_HDL *hdl);
 
 unsigned char PUP_isFieldExist(PUP_HDL *handle, int bitField);
 unsigned char PUP_isPackedFieldExist(const uch *packedIso, int bitField);

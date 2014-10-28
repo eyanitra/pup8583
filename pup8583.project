@@ -101,6 +101,7 @@
     <File Name="DSC_converter.c"/>
     <File Name="DSC_converter.h"/>
     <File Name="printer.c"/>
+    <File Name="testUnpack.c"/>
   </VirtualDirectory>
   <Dependencies Name="Debug"/>
   <Dependencies Name="Release"/>
