@@ -3,7 +3,7 @@
 
 void print8L(char *buffer, int bufferLength)
 {
-	char LineCache[30];
+	char LineCache[64];
 	int i;
 	char n;
 
@@ -11,6 +11,7 @@ void print8L(char *buffer, int bufferLength)
 	for(i = 0, n = 0; i<bufferLength; i++){
 		sprintf(&LineCache[n*3], "%02X ", buffer[i]);
 		if( n == 7 ){
+			strcat(LineCache, "\n");
 			printf(LineCache);
 			n = 0;
 			memset(LineCache, 0x00, sizeof(LineCache));
