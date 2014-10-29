@@ -14,29 +14,29 @@ const char *typeTranslator(const uch *codec, int i)
 	static char buff[30];
 	memset(buff, 0, sizeof (buff));
 	
-	type = PUP_fieldType(codec, i);
+	type = PUP_getFieldType(codec, i);
 	switch(type)
 	{
 	case pup_fix:
-		sprintf(buff,"fixed %d", PUP_fixFieldLen(codec, i));
+		sprintf(buff,"fixed %d", PUP_getFixFieldByteLen(codec, i));
 		return buff;
 	case pup_l2ascii:
-		sprintf(buff,"llvar ascii %s", PUP_fixFieldLen(codec, i)?"error":" ");
+		sprintf(buff,"llvar ascii %s", PUP_getFixFieldByteLen(codec, i)?"error":" ");
 		return buff;
 	case pup_l2bcd:
-		sprintf(buff,"llvar bcd %s", PUP_fixFieldLen(codec, i)?"error":" ");
+		sprintf(buff,"llvar bcd %s", PUP_getFixFieldByteLen(codec, i)?"error":" ");
 		return buff;
 	case pup_l2bin:
-		sprintf(buff,"llvar bin %s", PUP_fixFieldLen(codec, i)?"error":" ");
+		sprintf(buff,"llvar bin %s", PUP_getFixFieldByteLen(codec, i)?"error":" ");
 		return buff;
 	case pup_l3ascii:
-		sprintf(buff,"lllvar ascii %s", PUP_fixFieldLen(codec, i)?"error":" ");
+		sprintf(buff,"lllvar ascii %s", PUP_getFixFieldByteLen(codec, i)?"error":" ");
 		return buff;
 	case pup_l3bcd:
-		sprintf(buff,"lllvar bcd %s", PUP_fixFieldLen(codec, i)?"error":" ");
+		sprintf(buff,"lllvar bcd %s", PUP_getFixFieldByteLen(codec, i)?"error":" ");
 		return buff;
 	case pup_l3bin:
-		sprintf(buff,"lllvar bin %s", PUP_fixFieldLen(codec, i)?"error":" ");
+		sprintf(buff,"lllvar bin %s", PUP_getFixFieldByteLen(codec, i)?"error":" ");
 		return buff;
 	default :
 		return "error!";

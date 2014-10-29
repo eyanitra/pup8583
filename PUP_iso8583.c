@@ -19,26 +19,6 @@ typedef struct hdl_t HDL;
 #define Z_MALLOX(a) 	malloc(a)
 #define Z_FREE(x)		free(x)
 
-// getNextFieldOffset(const uch *codec)
-// {return (int)(2 +(codec[1] & 0x3));};
-// not a function since for optimation
-
-// getFieldType(const uch *codec)
-// {return (PUP_FTYPE)((codec[1] & 0xFC)>> 2);};
-
-const uch *ptrCodecField(const uch *codec, int index)
-{
-	int sh = 0, cur = 0;
-	do{
-		codec += sh;
-		cur = codec[0];
-		sh = 2 + (codec[1] & 0x3); 
-	}while(cur < index);
-	
-	if(cur == index)
-		return &codec[0];
-	return 0;
-}
 
 uch PUP_isBitmapExist(const uch *bitmap, int index)
 {
@@ -77,96 +57,6 @@ int PUP_getIndexAfter(const uch *bitmap, int bitmapLen, int index)
 	return 0;
 }
 
-PUP_FTYPE PUP_getFieldType(const uch *codec, int index)
-{
-	int sh;
-	
-	if((index < 2)||(index > 128))
-		return pup_error;
-	codec = ptrCodecField(codec, index);
-	if(codec){
-		sh = codec[1] & 0xFC;
-		return (PUP_FTYPE)(sh >>= 2);
-	}
-	return pup_error;
-}
-
-int PUP_fixFieldLen(const uch *codec, int index)
-{
-	int sh, cur, len;
-	
-	if((index < 2)||(index > 128))
-		return 0;
-	
-	codec = ptrCodecField(codec, index);
-	if(codec){
-		sh = codec[1] & 0x3;
-		for(cur = 2, len = 0; sh > 0; --sh){
-			len <<= 8;
-			len += codec[cur++];
-		}
-	}
-	
-	return len;
-}
-
-//////////////////////////
-
-static int getFieldDataOffset(const uch *flCodec, const uch *flData)
-{
-	PUP_FTYPE type;
-	type = (PUP_FTYPE)((flCodec[1] & 0xFC)>> 2);
-	
-	switch(type)
-	{
-	case pup_fix:
-		return 0;
-	case pup_l2bcd:
-	case pup_l3bcd:
-		return 2;
-	case pup_lbcd:
-		return 1;
-	default:
-		break;
-	}
-	return 0;
-};
-
-static int getFieldByteLen(const uch *flCodec, const uch *flData)
-{	
-	int offset = 0, ext;
-	ext = flCodec[1] & 0x3;
-	
-	switch((PUP_FTYPE)((flCodec[1] & 0xFC)>> 2))
-	{
-	case pup_fix:
-		switch(ext)
-		{
-		case 3:
-			BIN3_TO_INT_BE(offset, flCodec,2);
-			break;
-		case 2:
-			BIN2_TO_INT_BE(offset, flCodec,2);
-			break;
-		case 1:
-			offset = flCodec[2];
-		default:
-			break;
-		}
-	case pup_l3bcd:
-		offset = dscBcdToBinary32(flData,4);
-		break;
-	case pup_l2bcd:
-		offset = dscBcdToBinary32(&flData[1],2);
-		break;
-	case pup_lbcd:
-		offset = dscBcdToBinary32(flData,2);
-	default:
-		break;
-	};
-	return offset;
-};
-
 static const uch * ptrVarField(HDL *hdl, const uch *data, int index)
 {
 	int i, sk;
@@ -177,7 +67,7 @@ static const uch * ptrVarField(HDL *hdl, const uch *data, int index)
 			codec += (codec[1] & 0x3)+2;
 		if(i < (int)(codec[0]))
 			return 0;
-		sk = getFieldDataOffset(codec, data) + getFieldByteLen(codec, data);
+		sk = PUP_getExpectedValueOffset(codec, data) + PUP_getExpectedByteLen(codec, data);
 		data += sk;
 	}
 	return data;
@@ -210,7 +100,7 @@ unhandled_field PUP_getUnpack(const uch *codec, const uch *pack, int pLen, PUP_H
 		
 	for(i = 2; i <= max; ++i){
 		if(PUP_isBitmapExist(hdl->bitmap, i))
-			if(ptrCodecField(codec, i) == 0){
+			if(PUP_ptrCodecField(codec, i) == 0){
 				Z_FREE(hdl);
 				return i;
 			}
@@ -244,11 +134,11 @@ int PUP_getFieldByteLen(PUP_HDL handle, int bitField)
 	if(!PUP_isFieldExist(handle, bitField))
 		return 0;
 	if(PUP_getFieldType(hdl->codec, bitField) == pup_fix)
-		return PUP_fixFieldLen(hdl->codec, bitField);
+		return PUP_getFixFieldByteLen(hdl->codec, bitField);
 		
 	fData = ptrVarField(hdl, hdl->pData, bitField);
-	fCode = ptrCodecField(hdl->codec, bitField);
-	return getFieldByteLen(fCode,fData);
+	fCode = PUP_ptrCodecField(hdl->codec, bitField);
+	return PUP_getExpectedByteLen(fCode,fData);
 }
 
 unsigned char PUP_getFieldOK(PUP_HDL handle, int bitField, uch *output)
@@ -261,9 +151,9 @@ unsigned char PUP_getFieldOK(PUP_HDL handle, int bitField, uch *output)
 		return 0;
 		
 	fData = ptrVarField(hdl, hdl->pData, bitField);
-	fCode = ptrCodecField(hdl->codec, bitField);
-	len = getFieldByteLen(fCode, fData);
-	sk = getFieldDataOffset(fCode, fData);
+	fCode = PUP_ptrCodecField(hdl->codec, bitField);
+	len = PUP_getExpectedByteLen(fCode, fData);
+	sk = PUP_getExpectedValueOffset(fCode, fData);
 	
 	memcpy(output,fData + sk, len);
 	
