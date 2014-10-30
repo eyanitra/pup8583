@@ -1,18 +1,31 @@
 #include "PUP_isoCodec.h"
 #include "DSC_converter.h"
 
-#include <string.h>
-#include <stdlib.h>
-#define Z_MALLOX(a) 	malloc(a)
-#define Z_FREE(x)		free(x)
+#ifndef _EFT30_
+#	include <string.h>
+#	include <stdlib.h>
+#	define Z_MALLOX(a) 	malloc(a)
+#	define Z_FREE(x)		free(x)
+#else
+#	include "SDK30.h"
+#	define Z_MALLOX(a) 	umalloc(a)
+#	define Z_FREE(x)		ufree(x)
+#endif
 
 
-// getNextFieldOffset(const uch *codec)
-// {return (int)(2 +(codec[1] & 0x3));};
-// not a function since for optimation
+const uch *PUP_ptrNextCodec(const uch *codec)
+{
+	if(codec[0] < 128 ){
+		int si = (int)(2 +(codec[1] & 0x3));
+		return 	&codec[si];
+	}
+	return 0;
+}
 
-// getFieldType(const uch *codec)
-// {return (PUP_FTYPE)((codec[1] & 0xFC)>> 2);};
+int	PUP_getCodecIndex(const uch *codec)
+{
+	return (int)codec[0];
+}	
 
 const uch *PUP_ptrCodecField(const uch *codec, int index)
 {
@@ -83,10 +96,12 @@ int PUP_getExpectedValueOffset(const uch *flCodec, const uch *flData)
 
 int PUP_getExpectedByteLen(const uch *flCodec, const uch *flData)
 {	
+	PUP_FTYPE type;
 	int offset = 0, ext;
+
 	ext = flCodec[1] & 0x3;
-	
-	switch((PUP_FTYPE)((flCodec[1] & 0xFC)>> 2))
+	type = (PUP_FTYPE)((flCodec[1] & 0xFC)>> 2);
+	switch(type)
 	{
 	case pup_fix:
 		switch(ext)
@@ -102,6 +117,7 @@ int PUP_getExpectedByteLen(const uch *flCodec, const uch *flData)
 		default:
 			break;
 		}
+		break;
 	case pup_l3bcd:
 		offset = dscBcdToBinary32(flData,4);
 		break;

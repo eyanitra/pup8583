@@ -1,7 +1,17 @@
 #include "PUP_iso8583.h"
 #include "DSC_converter.h"
-#include <string.h>
-#include <stdlib.h>
+
+#ifndef _EFT30_
+#	include <string.h>
+#	include <stdlib.h>
+#	define Z_MALLOX(a) 	malloc(a)
+#	define Z_FREE(x)		free(x)
+#else
+#	include <SDK30.h>
+#	define Z_MALLOX(a) 	umalloc(a)
+#	define Z_FREE(x)		ufree(x)
+#endif
+
 
 // todo must define default codec
 
@@ -15,9 +25,6 @@ struct hdl_t{
 };
 
 typedef struct hdl_t HDL;
-
-#define Z_MALLOX(a) 	malloc(a)
-#define Z_FREE(x)		free(x)
 
 
 uch PUP_isBitmapExist(const uch *bitmap, int index)
@@ -62,13 +69,16 @@ static const uch * ptrVarField(HDL *hdl, const uch *data, int index)
 	int i, sk;
 	const uch *codec = hdl->codec;
 	
-	for(i = 2; (i < index)&&(i); i = PUP_getIndexAfter(hdl->bitmap, (hdl->extended)?16:8,i)){
-		while( i > (int)(codec[0]))
-			codec += (codec[1] & 0x3)+2;
-		if(i < (int)(codec[0]))
+	for(i = 2; i < index; i = PUP_getIndexAfter(hdl->bitmap, (hdl->extended)?16:8,i)){
+		if(i == 0)
 			return 0;
-		sk = PUP_getExpectedValueOffset(codec, data) + PUP_getExpectedByteLen(codec, data);
-		data += sk;
+		while( i > PUP_getCodecIndex(codec))
+			codec = PUP_ptrNextCodec(codec);
+		if(i == PUP_getCodecIndex(codec)){
+			sk = PUP_getExpectedValueOffset(codec, data);
+			sk += PUP_getExpectedByteLen(codec, data);
+			data += sk;
+		}
 	}
 	return data;
 }
@@ -113,7 +123,7 @@ unhandled_field PUP_getUnpack(const uch *codec, const uch *pack, int pLen, PUP_H
 	return 0;
 }
 
-unsigned char PUP_isFieldExist(PUP_HDL handle, int bitField)
+uch PUP_isFieldExist(PUP_HDL handle, int bitField)
 {
 	HDL *hdl = (HDL *)handle.src;
 	
@@ -141,9 +151,9 @@ int PUP_getFieldByteLen(PUP_HDL handle, int bitField)
 	return PUP_getExpectedByteLen(fCode,fData);
 }
 
-unsigned char PUP_getFieldOK(PUP_HDL handle, int bitField, uch *output)
+const uch* PUP_ptrFieldData(PUP_HDL handle, int bitField)
 {
-	int sk, len;
+	int sk;
 	const uch *fData, *fCode;
 	
 	HDL *hdl = (HDL *)handle.src;
@@ -152,13 +162,22 @@ unsigned char PUP_getFieldOK(PUP_HDL handle, int bitField, uch *output)
 		
 	fData = ptrVarField(hdl, hdl->pData, bitField);
 	fCode = PUP_ptrCodecField(hdl->codec, bitField);
-	len = PUP_getExpectedByteLen(fCode, fData);
 	sk = PUP_getExpectedValueOffset(fCode, fData);
 	
-	memcpy(output,fData + sk, len);
-	
-	return 1;
+	return fData + sk;
 }
+
+const uch* PUP_ptrField(PUP_HDL handle, int bitField)
+{
+	const uch *fData;
+	HDL *hdl = (HDL *)handle.src;
+	if(!PUP_isFieldExist(handle, bitField))
+		return 0;
+		
+	fData = ptrVarField(hdl, hdl->pData, bitField);
+	return fData;
+}
+
 
 void PUP_endUnpack(PUP_HDL *handel)
 {

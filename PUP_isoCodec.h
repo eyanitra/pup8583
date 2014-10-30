@@ -1,7 +1,7 @@
 #ifndef CODEC_HANDLER_ISO
 #define CODEC_HANDLER_ISO
 
-typedef unsigned char uch;
+#include "DSC_converter.h"
 
 enum pup_dt{
 	pup_fix = 0,
